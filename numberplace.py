@@ -2,28 +2,51 @@
 import numpy as np
 
 
-class Numberplace(object):
+class Numberplace:
     N = 0
-    _cands = []
-    _npl = []
-    _cflags = []
-    _nflags = []
+    npl = []
+    ncandflag = []
+    valflag = []
+
+    cells = []
+
+    class Cell:
+        N = 3
+        ndim = 9
+        val = 0 
+        valflag = 0
+        cand = [] 
+        candflag = []
+        idx = []
+        idxb = [] 
+        blk = []
+
+        def __init__(self, idx, N=3):
+            self.N = N
+            self.ndim = N*N
+            self.idx = idx
+            self.cand = list(range(N*N)) 
+            self.candflag = np.ones(N*N)
 
     def __init__(self, N=3, rseed=np.random.randint(2**32-1), debug=False):
         self.N = N
         self.ndim = N*N
         self._rseed = rseed 
-        self._init_arrays()
         self.debug=debug
         np.random.seed(rseed)
+        self._init_cells()
 
-
-    def _init_arrays(self):
-        self._npl = np.zeros((self.ndim, self.ndim), dtype=int)
-        self._nflags = np.array(self._npl.copy() * 0, dtype=int)
-        self._cands = np.arange(self.ndim, dtype=int) + 1
-        self._cflags = np.ones((self.ndim, self.ndim, self.ndim), dtype=int)
-
+    def _init_cells(self):
+        for i in range(self.ndim):
+            cells_row = []
+            for j in range(self.ndim):
+                idx = (i, j)
+                celltmp = self.Cell(idx, self.N)
+                celltmp.idxb = self.idx2idxb(idx)
+                celltmp.blk = (celltmp.idxb[0], celltmp.idxb[1])
+                cells_row.append(celltmp)
+            self.cells.append(cells_row)
+         
 
     def idx2idxb(self, idx):
         idxb = []
@@ -31,7 +54,6 @@ class Numberplace(object):
         idxb.append(idx[1]//self.N)
         idxb.append(idx[0]%self.N)
         idxb.append(idx[1]%self.N)
-
         return idxb
 
 
@@ -39,14 +61,13 @@ class Numberplace(object):
         idx = []
         idx.append(idxb[0]*self.N+idxb[2])
         idx.append(idxb[1]*self.N+idxb[3])
-
         return idx
 
 
     def print(self, arr=None):
         N = self.N
         if arr is None:
-            arr = self._npl
+            arr = self.get_npl()
 
         hline = "-"*(N*N*4 + self.N + 1)
         print (hline)
@@ -69,61 +90,54 @@ class Numberplace(object):
                 print ("")
 
         print ("\n")
-
         return
 
     def place_number(self, idx, num):
-        if self._nflags[idx[0], idx[1]]:
-            print (f"The cell {idx} is already filled.")
-            if (self.debug):
-                raise
+        i = idx[0]
+        j = idx[1]
+        cell = self.cells[i][j]
 
-        cflag = self._cflags[idx[0], idx[1]]
-        if cflag[num-1] == 0:
-            print (f"{num} does not fit to {idx}.") 
-            if (self.debug):
-                raise
-
-        if (self.debug):
-            print (f"idx : {idx} \nnum : {num}");
-        
-        self._npl[idx[0], idx[1]] = num
-        self._nflags[idx[0], idx[1]] = 1
-
+        cell.val = num
+        cell.valflag = 1
         self.down_flags(idx, num)
 
-
     def place_rand_number(self, idx):
-        if self._nflags[idx[0], idx[1]] == 1:
-            print (f"The cell {idx} is already filled.")
-            if (self.debug):
-                return
-            else:
-                raise
-
-        cflag = self._cflags[idx[0], idx[1]]
-        cand = self._cands[cflag==1]
-        if len(cand):
-            nidx = np.random.randint(len(cand))
-            num = cand[nidx]
-        else:
-            print (f"No more candidates in the cell {idx}. ")
-            if (self.debug):
-                return 
-            else:
-                raise
-
-        self.place_number(idx, num)
-
-        return 
+        pass
 
 
     def down_flags(self, idx, num):
-        self._cflags[idx[0], idx[1]] = 0
-        self._cflags[idx[0], :, num-1] = 0
-        self._cflags[:, idx[1], num-1] = 0
+        pass
 
-        blki, blkj = np.array(idx) // self.N 
-        self._cflags[blki*self.N:blki*self.N+3, blkj*self.N:blkj*self.N+3, num-1] = 0
 
+    def get_npl(self):
+        arr = []
+        for i in range(self.ndim):
+            arr_row = []
+            for j in range(self.ndim):
+                arr_row.append(self.cells[i][j].val)
+            arr.append(arr_row)
+
+        return arr
+
+    def get_ncandflags(self):  
+        ndim = self.ndim
+        arr = np.zeros((ndim, ndim), dtype=int)
+        for i in range(ndim):
+            for j in range(ndim):
+                arr[i,j] = sum(self.cells[i][j].candflag)
+
+        return arr
+
+
+def test():
+    npl = Numberplace(N=3)
+    npl.print()
+    npl.print(npl.get_ncandflags())
+    npl.place_number((3,3), 3)
+    npl.print()
+    npl.print(npl.get_ncandflags())
+    
+
+if __name__=="__main__":
+    test()
 

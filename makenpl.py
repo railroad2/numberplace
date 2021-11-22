@@ -92,7 +92,7 @@ def flagtest(N=3, rseed=None):
 
 
 if __name__=="__main__":
-    make_numberplace_A5(3, 0)
+    make_numberplace_A4(3, 0)
 
     #flagtest(N=3, rseed=0)
 
