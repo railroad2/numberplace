@@ -482,7 +482,7 @@ class Numberplace:
     
     def write_npl(self):
         fname = f"./npl/npl_N{self.N}_seed{self.rseed}_ntry{self.ntry}_{self.status}.txt"
-        np.savetxt(fname, self.get_npl_arr())
+        np.savetxt(fname, self.get_npl_arr(), format='%d')
 
         return
 
