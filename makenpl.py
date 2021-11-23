@@ -81,7 +81,7 @@ def make_numberplace_A5(npl):
     npl.print()
 
 
-def make_numberplace_A6(npl):
+def make_numberplace_A6(npl, silent=False):
     ## filling the npl based on entropy
     N = npl.N
     ndim = npl.ndim
@@ -112,10 +112,10 @@ def make_numberplace_A6(npl):
             break
 
     t1 = time.time()
+    res = npl.validation(silent=silent)
     print (f"Elapsed time: {t1 - t0} s")
-    res = npl.validation()
 
-    if 1:#res == 1:
+    if res == 1:
         npl.write_result()
     if res == 1:
         npl.write_npl()
@@ -125,8 +125,6 @@ def make_numberplace_A6(npl):
 
 def A6loop(seed0=None, ntrymax=1000):
     N = 3
-    npl = Numberplace(N)
-    npl.debug = False
 
     if seed0 is None:
         print ("Enter initial seed to start from")
@@ -134,20 +132,24 @@ def A6loop(seed0=None, ntrymax=1000):
 
     seed = seed0
     while (1): # seed loop
-        npl.set_rseed(seed)
         ntry = 0
         nsuccess = 0
+        np.random.seed(seed)
+        npl = Numberplace(N=N, rseed=seed, reset_rng=False)
+        npl.debug = False
 
         while (ntry <= ntrymax): #ntry loop
             npl.ntry = ntry
-            res = make_numberplace_A6(npl)
+            res = make_numberplace_A6(npl, silent=False)
 
             if res == 1:
                 nsuccess += 1
 
+            npl.reset()
             ntry += 1
 
         seed += 1
+
 
 def flagtest(npl):
     npl.place_rand_number((3,5))
@@ -156,19 +158,19 @@ def flagtest(npl):
 
 
 def doit():
-    N = 3
+    N = 4
     rseed = None
     npl = Numberplace(N)
-    npl.debug = False
+    npl.debug = True
 
     make_numberplace_A6(npl)
 
 
 def doit2():
-    A6loop()
+    A6loop(0)
 
 
 if __name__=="__main__":
-    doit()
+    doit2()
 
 

@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
+import os
 import copy
 import numpy as np
 
 
 class Numberplace:
     N = 0
-    npl = []
-    ncandflag = []
-    valflag = []
     status = 0
     ntry = 0
-
     cells = []
 
     class Cell:
@@ -27,20 +24,44 @@ class Numberplace:
         def __init__(self, idx, N=3):
             self.N = N
             self.ndim = N*N
+            self.val = 0
+            self.valflag = 0
             self.idx = idx
+            self.idxb = []
+            self.blk = []
             self.cand = list(np.arange(N*N)+1)
             self.candflag = np.ones(N*N)
 
 
-    def __init__(self, N=3, rseed=np.random.randint(2**32-1), debug=False):
+    def __init__(self, N=3, rseed=None, reset_rng=True, debug=False):
         self.N = N
         self.ndim = N*N
-        self._rseed = rseed 
         self.debug=debug
-        np.random.seed(rseed)
+        self.cells = []
         self._init_cells()
+        self.status = None
+        self.ntry = None
+        self.reset_rng = reset_rng
+
+        if rseed is None:
+            self.rseed = np.random.randint(2**32-1)
+        else:
+            self.rseed = rseed
+
+        if reset_rng:
+            np.random.seed(self.rseed)
+            
+        try:
+            os.mkdir ('result')
+        except:
+            pass
+        try:
+            os.mkdir ('npl')
+        except:
+            pass
 
     def _init_cells(self):
+        self.cells = []
         for i in range(self.ndim):
             cells_row = []
             for j in range(self.ndim):
@@ -52,9 +73,9 @@ class Numberplace:
             self.cells.append(cells_row)
         self.cells = np.array(self.cells) 
 
-    def set_rseed(self, seed):
-        self._rseed = seed
-        np.random.seed(self._rseed)
+    def reset(self):
+        self.__init__(N=self.N, rseed=self.rseed, reset_rng=self.reset_rng, debug=self.debug)
+        
 
     def idx2idxb(self, idx):
         idxb = []
@@ -362,25 +383,30 @@ class Numberplace:
 
         return 0
 
-    def validation(self):
+    def validation(self, silent=False):
         npl = np.array(self.get_npl_arr())
         N = self.N
         ndim = self.ndim
 
-        print ("="*50)
-        print (f"Seed: {self._rseed}")
-        print (f"Ntry: {self.ntry}")
-        print (f"Result:")
-        self.print()
+        if not silent:
+            print ("="*50)
+            print (f"Seed: {self.rseed}")
+            print (f"Ntry: {self.ntry}")
+            print (f"Result:")
+            self.print()
 
         num, cnt = np.unique(npl, return_counts=True)
-        nerrorcell = dict(zip(num, cnt))[-1]
+        try:
+            nerrorcell = dict(zip(num, cnt))[-1]
+        except:
+            nerrorcell = 0
         isok = "OK" if cnt.all() == 9  else "Error"
 
         if self.debug:
             print (f"total: {dict(zip(num, cnt))} ({isok})") 
 
-        print (f"Number of error cells: {nerrorcell}")
+        if not silent:
+            print (f"Number of error cells: {nerrorcell}")
 
         errorcnt = nerrorcell
         correct = np.sum(np.arange(ndim)+1)
@@ -398,7 +424,7 @@ class Numberplace:
                 errorcnt += 1
 
             if self.debug:
-                print (f"\trow #{i}: {dic}, sum={sum(num)} ({isok})") 
+                print (f"\trow #{i}: {dic}, sum= {sum(num)} ({isok})") 
 
         if self.debug: print ("Column test")
         for i in range(ndim):
@@ -413,7 +439,7 @@ class Numberplace:
                 errorcnt += 1
 
             if self.debug:
-                print (f"\tcol #{i}: {dic}, sum={sum(num)} ({isok})") 
+                print (f"\tcol #{i}: {dic}, sum= {sum(num)} ({isok})") 
 
         if self.debug: print ("Block test")
         for i in range(N):
@@ -429,31 +455,33 @@ class Numberplace:
                     errorcnt += 1
 
                 if self.debug:
-                    print (f"\tblock #{i},{j}: {dic}, sum={sum(num)} ({isok})") 
+                    print (f"\tblock #{i},{j}: {dic}, sum= {sum(num)} ({isok})") 
 
         if errorcnt == 0:
             self.status = "SUCCESS"
-            print (self.status)
+            if not silent:
+                print (self.status)
             return 1
         else:
             self.status = "FAIL"
-            print (self.status)
+            if not silent:
+                print (self.status)
             return -1
 
         return 0
     
     def write_result(self):
-        fname = f"./result/result_N{self.N}_seed{self._rseed}_ntry{self.ntry}_{self.status}.txt"
+        fname = f"./result/result_N{self.N}_seed{self.rseed}_ntry{self.ntry}_{self.status}.txt"
         with open(fname, 'a') as f:
-            f.write(f"Seed: {self._rseed}\n")
+            f.write(f"Seed: {self.rseed}\n")
             f.write(f"Ntry: {self.ntry}\n")
             f.write(f"Result: \n\n")
-            f.write(f"{npl.print(returnmsg=True)}")
+            f.write(f"{self.print(returnmsg=True)}")
 
         return
     
     def write_npl(self):
-        fname = f"./npl/npl_N{self.N}_seed{self._rseed}_ntry{self.ntry}_{self.status}.txt"
+        fname = f"./npl/npl_N{self.N}_seed{self.rseed}_ntry{self.ntry}_{self.status}.txt"
         np.savetxt(fname, self.get_npl_arr())
 
         return
